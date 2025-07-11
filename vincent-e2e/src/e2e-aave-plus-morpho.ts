@@ -389,7 +389,8 @@ let selectedUsdcVault: any;
     process.env.TEST_FUNDER_PRIVATE_KEY,
     addTestResult,
     CONFIRMATIONS_TO_WAIT,
-    NETWORK_CONFIG.network
+    NETWORK_CONFIG.network,
+    "0.002" // 0.002 ETH for gas fees
   );
 
   // ========================================

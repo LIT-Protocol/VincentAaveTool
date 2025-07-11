@@ -13,7 +13,6 @@ suppressLitLogs(true);
 
 import { getVincentToolClient } from "@lit-protocol/vincent-app-sdk";
 // Tools and Policies that we will be testing
-import { vincentPolicyMetadata as sendLimitPolicyMetadata } from "../../vincent-packages/policies/send-counter-limit/dist/index.js";
 import { bundledVincentTool as morphoTool } from "../../vincent-packages/tools/morpho/dist/index.js";
 import { bundledVincentTool as erc20ApproveTool } from "@lit-protocol/vincent-tool-erc20-approval";
 import { ethers } from "ethers";
@@ -276,7 +275,6 @@ const CONFIRMATIONS_TO_WAIT = 2;
     {
       cidToNameMap: {
         [morphoTool.ipfsCid]: "Morpho Tool",
-        [sendLimitPolicyMetadata.ipfsCid]: "Send Limit Policy",
         [erc20ApproveTool.ipfsCid]: "ERC20 Approval Tool",
       },
       debug: true,
@@ -288,11 +286,7 @@ const CONFIRMATIONS_TO_WAIT = 2;
    * 1. Authorised during agent wallet PKP minting
    * 2. Permitted as authentication methods for the PKP
    */
-  const toolAndPolicyIpfsCids = [
-    morphoTool.ipfsCid,
-    erc20ApproveTool.ipfsCid,
-    sendLimitPolicyMetadata.ipfsCid,
-  ];
+  const toolAndPolicyIpfsCids = [morphoTool.ipfsCid, erc20ApproveTool.ipfsCid];
 
   /**
    * ====================================
@@ -405,7 +399,8 @@ const CONFIRMATIONS_TO_WAIT = 2;
     process.env.TEST_FUNDER_PRIVATE_KEY,
     addTestResult,
     CONFIRMATIONS_TO_WAIT,
-    NETWORK_CONFIG.network
+    NETWORK_CONFIG.network,
+    "0.002" // 0.002 ETH for gas fees
   );
 
   // ========================================

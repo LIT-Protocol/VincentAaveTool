@@ -19,8 +19,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@lit-protocol/vincent-scaffold-sdk": "^1.1.4",
-    "@lit-protocol/vincent-tool-sdk": "^1.0.1",
+    "@lit-protocol/vincent-scaffold-sdk": "^1.1.5",
+    "@lit-protocol/vincent-tool-sdk": "^1.0.2",
     "ethers": "^5.8.0",
     "@bgd-labs/aave-address-book": "^4.19.3",
     "@aave/contract-helpers": "^1.35.0"

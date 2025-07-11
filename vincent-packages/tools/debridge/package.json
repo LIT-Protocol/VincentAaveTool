@@ -1,0 +1,42 @@
+{
+  "name": "@lit-protocol/vincent-tool-debridge",
+  "version": "0.0.1",
+  "description": "A Vincent tool created with @lit-protocol/vincent-scaffold-sdk",
+  "main": "dist/src/index.js",
+  "module": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "npm run action:build && tsc && npm run action:deploy",
+    "action:build": "vincent-scaffold pkg build",
+    "action:deploy": "sh -c '[ -f .env ] && dotenv -e .env -- vincent-scaffold pkg deploy || dotenv -e ../../../.env -- vincent-scaffold pkg deploy'",
+    "clean": "vincent-scaffold pkg clean"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@lit-protocol/constants": "^7.2.0",
+    "@lit-protocol/vincent-scaffold-sdk": "^1.1.5",
+    "@lit-protocol/vincent-tool-sdk": "^1.0.2",
+    "ethers": "^5.7.2"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "require": "./dist/src/index.js"
+    },
+    "./action": "./src/generated/lit-action.js"
+  },
+  "files": [
+    "dist",
+    "src/generated"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

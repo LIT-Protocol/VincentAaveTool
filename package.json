@@ -4,10 +4,11 @@
   "description": "Vincent project with tools and policies",
   "private": true,
   "scripts": {
-    "vincent:build": "dotenv -e .env -- sh -c 'cd vincent-packages/policies/send-counter-limit && npm install && npm run build && cd ../../tools/aave && npm install && npm run build && cd ../morpho && npm install && npm run build && cd ../../ && npm run vincent:reset'",
+    "vincent:build": "dotenv -e .env -- sh -c 'cd vincent-packages/policies/send-counter-limit && npm install && npm run build && cd ../../tools/aave && npm install && npm run build && cd ../morpho && npm install && npm run build && cd ../debridge && npm install && npm run build && cd ../../ && npm run vincent:reset'",
     "vincent:e2e:aave": "dotenv -e .env -- tsx vincent-e2e/src/e2e-aave.ts",
     "vincent:e2e:morpho": "dotenv -e .env -- tsx vincent-e2e/src/e2e-morpho.ts",
     "vincent:e2e:aave-plus-morpho": "dotenv -e .env -- tsx vincent-e2e/src/e2e-aave-plus-morpho.ts",
+    "vincent:e2e:debridge": "dotenv -e .env -- tsx vincent-e2e/src/e2e-debridge.ts",
     "vincent:reset": "rm -f .e2e-state.json",
     "vincent:forge:check": "sh -c 'if command -v forge >/dev/null 2>&1; then echo \"✅ Foundry is available\"; else echo \"❌ Foundry (forge) is not installed. Install it from https://getfoundry.sh/\"; exit 1; fi'",
     "vincent:forge:init": "dotenv -e .env -- sh -c 'npm run vincent:forge:check && forge init ./vincent-policy-contracts/counter && cd ./vincent-policy-contracts/counter && forge build && forge script script/Counter.s.sol --rpc-url https://yellowstone-rpc.litprotocol.com --broadcast --private-key $TEST_FUNDER_PRIVATE_KEY' && npm run vincent:gen-abi",
@@ -16,8 +17,8 @@
   },
   "devDependencies": {
     "@ansonhkg/abi-extractor": "1.1.0",
-    "@lit-protocol/vincent-app-sdk": "*",
-    "@lit-protocol/vincent-scaffold-sdk": "^1.1.4",
+    "@lit-protocol/vincent-app-sdk": "^1.0.2",
+    "@lit-protocol/vincent-scaffold-sdk": "^1.1.5",
     "chalk": "4.1.2",
     "dotenv-cli": "8.0.0",
     "tsx": "4.0.0",
@@ -25,6 +26,7 @@
   },
   "dependencies": {
     "@lit-protocol/vincent-tool-erc20-approval": "*",
+    "@lit-protocol/vincent-tool-uniswap-swap": "*",
     "ethers": "^5.8.0"
   }
 }

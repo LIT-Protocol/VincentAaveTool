@@ -549,12 +549,13 @@ export async function setupEthFunding(
   funderPrivateKey: string,
   addTestResult: (name: string, passed: boolean, error?: string) => void,
   confirmationsToWait: number = 1,
-  chain: string = "sepolia"
+  chain: string = "sepolia",
+  fundAmount: string = "0.001"
 ) {
   console.log(`⛽ Setting up ETH gas funding for ${chain} operations`);
 
-  const ETH_FUND_AMOUNT = "0.001"; // 0.01 ETH
-  const REQUIRED_ETH_BALANCE = ethers.utils.parseEther("0.0008");
+  const ETH_FUND_AMOUNT = fundAmount; // Use provided amount or default to 0.001 ETH
+  const REQUIRED_ETH_BALANCE = ethers.utils.parseEther(fundAmount).mul(80).div(100); // 80% of fund amount as threshold
 
   try {
     console.log("🔍 Checking PKP ETH balance for gas fees");

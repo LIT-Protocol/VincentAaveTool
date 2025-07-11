@@ -19,8 +19,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@lit-protocol/vincent-scaffold-sdk": "^1.1.4",
-    "@lit-protocol/vincent-tool-sdk": "^1.0.1"
+    "@lit-protocol/vincent-scaffold-sdk": "^1.1.5",
+    "@lit-protocol/vincent-tool-sdk": "^1.0.2"
   },
   "exports": {
     ".": {
