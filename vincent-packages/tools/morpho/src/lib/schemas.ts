@@ -25,6 +25,10 @@ export const toolParamsSchema = z.object({
     .optional(),
   chain: z.string(),
   rpcUrl: z.string().optional(),
+  // Gas sponsorship parameters for EIP-7702
+  alchemyGasSponsor: z.boolean().optional().default(false),
+  alchemyGasSponsorApiKey: z.string().optional(),
+  alchemyGasSponsorPolicyId: z.string().optional(),
 });
 
 /**

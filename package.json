@@ -7,6 +7,7 @@
     "vincent:build": "dotenv -e .env -- sh -c 'cd vincent-packages/policies/send-counter-limit && npm install && npm run build && cd ../../tools/aave && npm install && npm run build && cd ../morpho && npm install && npm run build && cd ../../ && npm run vincent:reset'",
     "vincent:e2e:aave": "dotenv -e .env -- tsx vincent-e2e/src/e2e-aave.ts",
     "vincent:e2e:morpho": "dotenv -e .env -- tsx vincent-e2e/src/e2e-morpho.ts",
+    "vincent:e2e:morpho:gasless": "dotenv -e .env -- tsx vincent-e2e/src/e2e-morpho-gasless.ts",
     "vincent:e2e:aave-plus-morpho": "dotenv -e .env -- tsx vincent-e2e/src/e2e-aave-plus-morpho.ts",
     "vincent:reset": "rm -f .e2e-state.json",
     "vincent:forge:check": "sh -c 'if command -v forge >/dev/null 2>&1; then echo \"✅ Foundry is available\"; else echo \"❌ Foundry (forge) is not installed. Install it from https://getfoundry.sh/\"; exit 1; fi'",
@@ -21,9 +22,12 @@
     "chalk": "4.1.2",
     "dotenv-cli": "8.0.0",
     "tsx": "4.0.0",
-    "viem": "2.31.4"
+    "viem": "2.29.2"
   },
   "dependencies": {
+    "@aa-sdk/core": "^4.49.0",
+    "@account-kit/infra": "^4.49.0",
+    "@account-kit/smart-contracts": "^4.49.0",
     "@lit-protocol/vincent-tool-erc20-approval": "*",
     "ethers": "^5.8.0"
   }

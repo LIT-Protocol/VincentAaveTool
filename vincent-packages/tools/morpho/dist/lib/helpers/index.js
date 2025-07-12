@@ -1,4 +1,6 @@
 import { ethers } from "ethers";
+import { createModularAccountV2Client } from "@account-kit/smart-contracts";
+import { alchemy } from "@account-kit/infra";
 /**
  * Well-known token addresses across different chains
  * Using official Circle USDC and canonical WETH addresses
@@ -878,3 +880,274 @@ export async function getVaultDiscoverySummary(chainId) {
         throw error;
     }
 }
+export class LitActionsSmartSigner {
+    signerType = "lit-actions";
+    inner;
+    pkpPublicKey;
+    signerAddress;
+    constructor(config) {
+        if (config.pkpPublicKey.startsWith("0x")) {
+            config.pkpPublicKey = config.pkpPublicKey.slice(2);
+        }
+        this.pkpPublicKey = config.pkpPublicKey;
+        this.signerAddress = ethers.utils.computeAddress("0x" + config.pkpPublicKey);
+        this.inner = {
+            pkpPublicKey: config.pkpPublicKey,
+            chainId: config.chainId,
+        }; // Inner client reference
+    }
+    async getAddress() {
+        return this.signerAddress;
+    }
+    async signMessage(message) {
+        let messageToSign;
+        if (typeof message === "string") {
+            messageToSign = message;
+        }
+        else {
+            messageToSign =
+                typeof message.raw === "string"
+                    ? ethers.utils.arrayify(message.raw)
+                    : message.raw;
+        }
+        const messageHash = ethers.utils.hashMessage(messageToSign);
+        const sig = await Lit.Actions.signAndCombineEcdsa({
+            toSign: ethers.utils.arrayify(messageHash),
+            publicKey: this.pkpPublicKey,
+            sigName: `alchemyMessage`,
+        });
+        const parsedSig = JSON.parse(sig);
+        return ethers.utils.joinSignature({
+            r: "0x" + parsedSig.r.substring(2),
+            s: "0x" + parsedSig.s,
+            v: parsedSig.v,
+        });
+    }
+    async signTypedData(params) {
+        // console.log("signTypedData called with params", params);
+        // Create the EIP-712 hash
+        const hash = ethers.utils._TypedDataEncoder.hash(params.domain || {}, params.types || {}, params.message || {});
+        const sig = await Lit.Actions.signAndCombineEcdsa({
+            toSign: ethers.utils.arrayify(hash),
+            publicKey: this.pkpPublicKey,
+            sigName: `alchemyTypedData`,
+        });
+        const parsedSig = JSON.parse(sig);
+        return ethers.utils.joinSignature({
+            r: "0x" + parsedSig.r.substring(2),
+            s: "0x" + parsedSig.s,
+            v: parsedSig.v,
+        });
+    }
+    // reference implementation is from Viem SmartAccountSigner
+    async signAuthorization(unsignedAuthorization) {
+        // console.log("signAuthorization called with params", unsignedAuthorization);
+        const { contractAddress, chainId, nonce } = unsignedAuthorization;
+        if (!contractAddress || !chainId) {
+            throw new Error("Invalid authorization: contractAddress and chainId are required");
+        }
+        const hash = ethers.utils.keccak256(ethers.utils.hexConcat([
+            "0x05",
+            ethers.utils.RLP.encode([
+                ethers.utils.hexlify(chainId),
+                contractAddress,
+                ethers.utils.hexlify(nonce),
+            ]),
+        ]));
+        const sig = await Lit.Actions.signAndCombineEcdsa({
+            toSign: ethers.utils.arrayify(hash),
+            publicKey: this.pkpPublicKey,
+            sigName: `alchemyAuth7702`,
+        });
+        const sigObj = JSON.parse(sig);
+        // console.log("sigObj in signAuthorization", sigObj);
+        return {
+            address: (unsignedAuthorization.address || contractAddress),
+            chainId: chainId,
+            nonce: nonce,
+            r: ("0x" + sigObj.r.substring(2)),
+            s: ("0x" + sigObj.s),
+            v: BigInt(sigObj.v),
+            yParity: sigObj.v,
+        };
+    }
+}
+/**
+ * Helper function to create a LitActionsSmartSigner for use with ethers.js
+ * This wraps the SmartAccountSigner in an ethers-compatible interface
+ */
+export function createEthersSignerFromLitActions(signer, provider) {
+    const ethersSignerWrapper = {
+        _isSigner: true,
+        provider,
+        getAddress: async () => signer.getAddress(),
+        signMessage: async (message) => {
+            const messageBytes = typeof message === "string"
+                ? ethers.utils.toUtf8Bytes(message)
+                : new Uint8Array(message);
+            return signer.signMessage({ raw: messageBytes });
+        },
+        signTransaction: async (transaction) => {
+            const tx = await ethers.utils.resolveProperties(transaction);
+            // For EIP-7702 transactions, we need to handle them specially
+            if (tx.type === 4 || tx.authorizationList) {
+                // This would be handled by the Smart Account Client
+                throw new Error("EIP-7702 transactions should be handled by Smart Account Client");
+            }
+            // For regular transactions, sign using Lit Protocol
+            const signedTx = await signer.inner.laUtils.transaction.primitive.signTx({
+                pkpPublicKey: signer.inner.pkpPublicKey,
+                tx,
+                sigName: `someTx`,
+            });
+            return signedTx;
+        },
+        connect: (newProvider) => {
+            return createEthersSignerFromLitActions(signer, newProvider);
+        },
+    };
+    return ethersSignerWrapper;
+}
+/**
+ * Helper function to get Alchemy chain configuration
+ */
+export function getAlchemyChainConfig(chainId) {
+    // Import chain definitions from Alchemy SDK
+    const { mainnet, sepolia, base, arbitrum, optimism, polygon, } = require("@account-kit/infra");
+    switch (chainId) {
+        case 1:
+            return mainnet;
+        case 11155111:
+            return sepolia;
+        case 8453:
+            return base;
+        case 42161:
+            return arbitrum;
+        case 10:
+            return optimism;
+        case 137:
+            return polygon;
+        default:
+            return mainnet;
+    }
+}
+export async function createAlchemySmartAccountClient({ alchemyApiKey, chainId, pkpPublicKey, policyId, }) {
+    // Create LitActionsSmartSigner for EIP-7702
+    const litSigner = new LitActionsSmartSigner({
+        pkpPublicKey,
+        chainId,
+    });
+    // Get the Alchemy chain configuration
+    const alchemyChain = getAlchemyChainConfig(chainId);
+    return await createModularAccountV2Client({
+        mode: "7702",
+        transport: alchemy({ apiKey: alchemyApiKey }),
+        chain: alchemyChain,
+        signer: litSigner,
+        policyId,
+    });
+}
+/**
+ * Generic function to execute any Morpho operation with gas sponsorship
+ */
+export async function executeOperationWithGasSponsorship({ pkpPublicKey, vaultAddress, functionName, args, chainId, alchemyApiKey, policyId, }) {
+    console.log(`[@lit-protocol/vincent-tool-morpho/executeOperationWithGasSponsorship] Starting EIP-7702 sponsored ${functionName} operation`);
+    console.log(`[@lit-protocol/vincent-tool-morpho/executeOperationWithGasSponsorship] Using EIP-7702 gas sponsorship`, { vaultAddress, functionName, args, policyId });
+    try {
+        console.log(`[@lit-protocol/vincent-tool-morpho/executeOperationWithGasSponsorship] Creating Smart Account Client`, { chainId });
+        // Create the Smart Account Client with EIP-7702 mode
+        const smartAccountClient = await createAlchemySmartAccountClient({
+            alchemyApiKey,
+            chainId,
+            pkpPublicKey,
+            policyId,
+        });
+        console.log(`[@lit-protocol/vincent-tool-morpho/executeOperationWithGasSponsorship] Smart Account Client created`);
+        // Prepare the user operation
+        const userOperation = {
+            target: vaultAddress,
+            value: 0n,
+            data: encodeFunctionData({
+                abi: ERC4626_VAULT_ABI,
+                functionName,
+                args,
+            }),
+        };
+        console.log(`[@lit-protocol/vincent-tool-morpho/executeOperationWithGasSponsorship] User operation prepared`, userOperation);
+        const uoStructResponse = await Lit.Actions.runOnce({
+            waitForResponse: true,
+            name: "buildUserOperation",
+        }, async () => {
+            try {
+                const uoStruct = await smartAccountClient.buildUserOperation({
+                    uo: userOperation,
+                    account: smartAccountClient.account,
+                });
+                // Properly serialize BigInt with a "type" tag
+                return JSON.stringify(uoStruct, (_, v) => typeof v === "bigint" ? { type: "BigInt", value: v.toString() } : v);
+            }
+            catch (e) {
+                console.log("Failed to build user operation, error below");
+                console.log(e);
+                console.log(e.stack);
+                return "";
+            }
+        });
+        if (uoStructResponse === "") {
+            throw new Error("Failed to build user operation");
+        }
+        // Custom reviver to convert {type: "BigInt", value: "..."} back to BigInt
+        const uoStruct = JSON.parse(uoStructResponse, (_, v) => {
+            if (v &&
+                typeof v === "object" &&
+                v.type === "BigInt" &&
+                typeof v.value === "string") {
+                return BigInt(v.value);
+            }
+            return v;
+        });
+        console.log(`[@lit-protocol/vincent-tool-morpho/executeOperationWithGasSponsorship] User operation struct prepared for signing`, uoStruct);
+        const signedUserOperation = await smartAccountClient.signUserOperation({
+            account: smartAccountClient.account,
+            uoStruct,
+        });
+        console.log(`[@lit-protocol/vincent-tool-morpho/executeOperationWithGasSponsorship] User operation signed`, signedUserOperation);
+        const entryPoint = smartAccountClient.account.getEntryPoint();
+        console.log(`[@lit-protocol/vincent-tool-morpho/executeOperationWithGasSponsorship] Prepared user operation for EIP-7702`, { userOperation });
+        const uoHash = await Lit.Actions.runOnce({
+            waitForResponse: true,
+            name: "sendWithAlchemy",
+        }, async () => {
+            try {
+                // Send the user operation with EIP-7702 delegation
+                const userOpResult = await smartAccountClient.sendRawUserOperation(signedUserOperation, entryPoint.address);
+                console.log(`[@lit-protocol/vincent-tool-morpho/executeOperationWithGasSponsorship] User operation sent`, { userOpHash: userOpResult });
+                return userOpResult;
+            }
+            catch (e) {
+                console.log("Failed to send user operation, error below");
+                console.log(e);
+                console.log(e.stack);
+                return "";
+            }
+        });
+        if (uoHash === "") {
+            throw new Error("Failed to send user operation");
+        }
+        return uoHash;
+    }
+    catch (error) {
+        console.error(`[@lit-protocol/vincent-tool-morpho/executeOperationWithGasSponsorship] EIP-7702 operation failed:`, error);
+        throw error;
+    }
+}
+/**
+ * Helper function to encode function data using ethers.js Interface
+ */
+function encodeFunctionData({ abi, functionName, args, }) {
+    const iface = new ethers.utils.Interface(abi);
+    return iface.encodeFunctionData(functionName, args);
+}
+// Legacy exports for backwards compatibility
+export { LitActionsSmartSigner as LitProtocolSigner };
+export { createEthersSignerFromLitActions as createEthersSignerFromLitProtocol };

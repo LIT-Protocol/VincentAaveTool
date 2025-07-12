@@ -20,6 +20,9 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@account-kit/infra": "^4.49.0",
+    "@account-kit/smart-contracts": "^4.49.0",
+    "@alchemy/aa-core": "^3.19.0",
     "@lit-protocol/vincent-scaffold-sdk": "^1.1.4",
     "@lit-protocol/vincent-tool-sdk": "^1.0.1",
     "@uniswap/token-lists": "^1.0.0-beta.34",
